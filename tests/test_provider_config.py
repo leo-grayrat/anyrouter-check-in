@@ -49,10 +49,10 @@ def test_provider_from_dict_inherits_profile_persistence_from_defaults():
 	assert provider.persist_profile is True
 
 
-def test_custom_provider_defaults_to_standard_newapi_checkin_path():
+def test_legacy_custom_provider_default_checkin_path_is_unchanged():
 	provider = ProviderConfig.from_dict('custom', {'domain': 'https://custom.example.com'})
 
-	assert provider.sign_in_path == '/api/user/checkin'
+	assert provider.sign_in_path == '/api/user/sign_in'
 
 
 def test_known_newapi_providers_are_builtin(monkeypatch):
@@ -69,6 +69,7 @@ def test_known_newapi_providers_are_builtin(monkeypatch):
 	assert config.providers['api456'].domain == 'https://api456.me'
 	assert config.providers['jun'].domain == 'https://muyuan.do'
 	assert config.providers['jun'].login_path == '/auth/login'
+	assert config.providers['gorouter'].sign_in_path == '/api/user/checkin'
 
 
 def test_account_with_domain_gets_direct_newapi_provider_name():
