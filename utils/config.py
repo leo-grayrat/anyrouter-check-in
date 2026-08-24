@@ -74,7 +74,7 @@ class ProviderConfig:
 			name=name,
 			domain=data['domain'],
 			login_path=data.get('login_path', defaults.login_path if defaults else '/login'),
-			sign_in_path=data.get('sign_in_path', defaults.sign_in_path if defaults else '/api/user/checkin'),
+			sign_in_path=data.get('sign_in_path', defaults.sign_in_path if defaults else '/api/user/sign_in'),
 			user_info_path=data.get('user_info_path', defaults.user_info_path if defaults else '/api/user/self'),
 			api_user_key=data.get('api_user_key', defaults.api_user_key if defaults else 'new-api-user'),
 			bypass_method=data.get('bypass_method', defaults.bypass_method if defaults else None),
@@ -129,7 +129,10 @@ class AppConfig:
 		}
 
 		for name, provider_data in KNOWN_NEWAPI_PROVIDERS.items():
-			providers[name] = ProviderConfig.from_dict(name, provider_data)
+			providers[name] = ProviderConfig.from_dict(
+				name,
+				{**provider_data, 'sign_in_path': '/api/user/checkin'},
+			)
 
 		# 尝试从环境变量加载自定义 providers
 		providers_str = os.getenv('PROVIDERS')
@@ -161,7 +164,7 @@ class AppConfig:
 			except Exception as e:
 				print(f'[WARNING] Error loading PROVIDERS: {e}, using default configuration only')
 
-		# 账号可以直接提供 domain；此时按标准 NewAPI 接口创建临时 provider。
+		# 普通 NewAPI 站可以直接在账号里写 domain，不再额外配置 PROVIDERS。
 		accounts_str = os.getenv('ANYROUTER_ACCOUNTS')
 		if accounts_str:
 			try:
@@ -172,7 +175,13 @@ class AppConfig:
 							continue
 						name = _account_provider_name(account_data, index)
 						if name not in providers:
-							providers[name] = ProviderConfig.from_dict(name, {'domain': account_data['domain']})
+							providers[name] = ProviderConfig.from_dict(
+								name,
+								{
+									'domain': account_data['domain'],
+									'sign_in_path': '/api/user/checkin',
+								},
+							)
 			except json.JSONDecodeError:
 				# load_accounts_config 会给出更具体的格式错误。
 				pass
