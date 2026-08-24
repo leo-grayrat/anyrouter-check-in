@@ -9,6 +9,26 @@ from dataclasses import dataclass
 from typing import Dict, List, Literal
 
 
+KNOWN_NEWAPI_PROVIDERS = {
+	'jun': {'domain': 'https://muyuan.do', 'login_path': '/auth/login'},
+	'gorouter': {'domain': 'https://gorouter.app'},
+	'tabitoken': {'domain': 'https://tabitoken.com'},
+	'docode': {'domain': 'https://docode.cc'},
+	'jianzhile': {'domain': 'https://jianzhile.vip'},
+	'shawn': {'domain': 'https://api.supxh.xin'},
+	'api456': {'domain': 'https://api456.me'},
+}
+
+
+def _account_provider_name(data: dict, index: int) -> str:
+	provider = data.get('provider')
+	if provider:
+		return provider
+	if data.get('domain'):
+		return f'newapi_{index + 1}'
+	return 'anyrouter'
+
+
 @dataclass
 class ProviderConfig:
 	"""Provider 配置"""
@@ -54,7 +74,7 @@ class ProviderConfig:
 			name=name,
 			domain=data['domain'],
 			login_path=data.get('login_path', defaults.login_path if defaults else '/login'),
-			sign_in_path=data.get('sign_in_path', defaults.sign_in_path if defaults else '/api/user/sign_in'),
+			sign_in_path=data.get('sign_in_path', defaults.sign_in_path if defaults else '/api/user/checkin'),
 			user_info_path=data.get('user_info_path', defaults.user_info_path if defaults else '/api/user/self'),
 			api_user_key=data.get('api_user_key', defaults.api_user_key if defaults else 'new-api-user'),
 			bypass_method=data.get('bypass_method', defaults.bypass_method if defaults else None),
@@ -108,6 +128,9 @@ class AppConfig:
 			),
 		}
 
+		for name, provider_data in KNOWN_NEWAPI_PROVIDERS.items():
+			providers[name] = ProviderConfig.from_dict(name, provider_data)
+
 		# 尝试从环境变量加载自定义 providers
 		providers_str = os.getenv('PROVIDERS')
 		if providers_str:
@@ -138,6 +161,22 @@ class AppConfig:
 			except Exception as e:
 				print(f'[WARNING] Error loading PROVIDERS: {e}, using default configuration only')
 
+		# 账号可以直接提供 domain；此时按标准 NewAPI 接口创建临时 provider。
+		accounts_str = os.getenv('ANYROUTER_ACCOUNTS')
+		if accounts_str:
+			try:
+				accounts_data = json.loads(accounts_str)
+				if isinstance(accounts_data, list):
+					for index, account_data in enumerate(accounts_data):
+						if not isinstance(account_data, dict) or not account_data.get('domain'):
+							continue
+						name = _account_provider_name(account_data, index)
+						if name not in providers:
+							providers[name] = ProviderConfig.from_dict(name, {'domain': account_data['domain']})
+			except json.JSONDecodeError:
+				# load_accounts_config 会给出更具体的格式错误。
+				pass
+
 		return cls(providers=providers)
 
 	def get_provider(self, name: str) -> ProviderConfig | None:
@@ -155,11 +194,12 @@ class AccountConfig:
 	name: str | None = None
 	email: str | None = None
 	password: str | None = None
+	domain: str | None = None
 
 	@classmethod
 	def from_dict(cls, data: dict, index: int) -> 'AccountConfig':
 		"""从字典创建 AccountConfig"""
-		provider = data.get('provider', 'anyrouter')
+		provider = _account_provider_name(data, index)
 		name = data.get('name', f'Account {index + 1}')
 
 		return cls(
@@ -169,6 +209,7 @@ class AccountConfig:
 			name=name if name else None,
 			email=data.get('email'),
 			password=data.get('password'),
+			domain=data.get('domain'),
 		)
 
 	def has_login_credentials(self) -> bool:
