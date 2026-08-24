@@ -1,10 +1,8 @@
 # Any Router 多账号自动签到
 
-> **只想快速使用？直接看 [QUICKSTART.md](QUICKSTART.md)：注册账号 → 填账号密码 → 放进一个 GitHub Secret → 开启 Actions。**
-
 [![GitHub Actions](https://github.com/millylee/anyrouter-check-in/workflows/PR%20Quality%20Checks/badge.svg)](https://github.com/millylee/anyrouter-check-in/actions)
 [![codecov](https://codecov.io/gh/millylee/anyrouter-check-in/branch/main/graph/badge.svg)](https://codecov.io/gh/millylee/anyrouter-check-in)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/millylee/anyrouter-check-in/main.svg)](https://results.pre-commit.ci/latest/github/millylee/anyrouter-check-in)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/millylee/anyrouter-check-in/main.svg)](https://results.pre-commit.ci/latest/github/millylee/anyrouter-check-in/main)
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/github/license/millylee/anyrouter-check-in)](LICENSE)
@@ -303,7 +301,7 @@ PROVIDERS={"agentrouter":{"use_proxy":true}}
 
 ### 钉钉机器人
 
-- `DINGDING_WEBHOOK`: 钉钉机器人的 Webhook URL
+- `DINGDING_WEBHOOK`: 钉钉机器人的 Webhook 地址
 
 ### 飞书机器人
 
@@ -323,33 +321,115 @@ PROVIDERS={"agentrouter":{"use_proxy":true}}
 
 ### Telegram Bot
 
-- `TELEGRAM_BOT_TOKEN`: Telegram Bot Token
+- `TELEGRAM_BOT_TOKEN`: Telegram Bot 的 Token
 - `TELEGRAM_CHAT_ID`: Telegram Chat ID
 
 ### Gotify 推送
 
-- `GOTIFY_URL`: Gotify 服务器地址（例如 `https://your-gotify-server/message`）
-- `GOTIFY_TOKEN`: Gotify 应用 Token
-- `GOTIFY_PRIORITY`: 消息优先级（默认 9）
+- `GOTIFY_URL`: Gotify 服务的 URL 地址（例如: https://your-gotify-server/message）
+- `GOTIFY_TOKEN`: Gotify 应用的访问令牌
+- `GOTIFY_PRIORITY`: Gotify 消息优先级 (1-10, 默认为 9)
 
 ### Bark 推送
 
-- `BARK_KEY`: Bark Key
-- `BARK_SERVER`: Bark 服务器地址（默认 `https://api.day.app`）
+- `BARK_KEY`: Bark 应用的 Key（APP 打开时即可看到）
+- `BARK_SERVER`: 自建 Bark 服务器地址 (可选，默认: https://api.day.app)
 
-## 本地运行
+配置步骤：
+
+1. 在仓库的 Settings -> Environments -> production -> Environment secrets 中添加上述环境变量
+2. 每个通知方式都是独立的，可以只配置你需要的推送方式
+3. 如果某个通知方式配置不正确或未配置，脚本会自动跳过该通知方式
+
+## 故障排除
+
+如果签到失败，请检查：
+
+1. 账号配置格式是否正确
+2. cookies 是否过期
+3. API User 是否正确
+4. 网站是否更改了签到接口
+5. 查看 Actions 运行日志获取详细错误信息
+
+## 本地开发环境设置
+
+如果你需要在本地测试或开发，请按照以下步骤设置：
 
 ```bash
-uv sync
-uv run python checkin.py
+# 安装所有依赖
+uv sync --dev
+
+# 安装 CloakBrowser 浏览器
+uv run python -m cloakbrowser install
+# 如需使用本地浏览器，可设置 CLOAKBROWSER_BINARY_PATH=/path/to/browser
+
+# 创建 .env 文件并配置（注意：JSON 必须是单行格式）
+# 示例：
+# ANYROUTER_ACCOUNTS=[{"name":"账号1","email":"your@email.com","password":"your_password"}]
+# PROVIDERS={"agentrouter":{"domain":"https://agentrouter.org"}}
+# PROXY_SUBSCRIPTION_URL=https://example.com/sub?token=xxx
+# CHECKIN_PROXY_URL=http://127.0.0.1:7890
+
+# 运行签到脚本
+uv run checkin.py
 ```
 
 ## 测试
 
 ```bash
-uv run pytest
+uv sync --dev
+
+# 浏览器相关测试或本地登录可安装 CloakBrowser，或设置 CLOAKBROWSER_BINARY_PATH 指向本地浏览器
+uv run python -m cloakbrowser install
+
+# 运行测试
+uv run pytest tests/
+
+# 查看测试覆盖率
+uv run pytest tests/ --cov=. --cov-report=html
 ```
 
-## 许可证
+## 贡献指南
 
-MIT License
+欢迎贡献代码！在提交 Pull Request 之前，请阅读[贡献指南](CONTRIBUTING.md)。
+
+### 代码质量
+
+本项目使用以下工具确保代码质量：
+
+- **Ruff**: 代码风格检查和格式化
+- **MyPy**: 静态类型检查
+- **Bandit**: 安全漏洞扫描
+- **Pytest**: 自动化测试
+- **pre-commit**: Git 提交前自动检查
+
+所有 Pull Request 会自动运行以下检查：
+
+- ✅ 代码风格检查（Ruff Lint & Format）
+- ✅ 类型检查（MyPy）
+- ✅ 安全扫描（Bandit）
+- ✅ 测试运行（Pytest）
+- ✅ 测试覆盖率报告（Codecov）
+
+### 本地开发
+
+```bash
+# 安装开发依赖
+uv sync --dev
+
+# 安装 pre-commit 钩子
+uv run pre-commit install
+
+# 运行代码检查
+uv run ruff check .
+uv run ruff format .
+uv run mypy .
+uv run bandit -r . -c pyproject.toml
+
+# 运行测试
+uv run pytest tests/ --cov=.
+```
+
+## 免责声明
+
+本脚本仅用于学习和研究目的，使用前请确保遵守相关网站的使用条款.
