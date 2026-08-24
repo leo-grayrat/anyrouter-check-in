@@ -1,6 +1,6 @@
 import json
 
-from utils.config import AppConfig, ProviderConfig
+from utils.config import AccountConfig, AppConfig, ProviderConfig
 
 
 def test_builtin_provider_profile_persistence_defaults(monkeypatch):
@@ -47,3 +47,60 @@ def test_provider_from_dict_inherits_profile_persistence_from_defaults():
 	)
 
 	assert provider.persist_profile is True
+
+
+def test_custom_provider_defaults_to_standard_newapi_checkin_path():
+	provider = ProviderConfig.from_dict('custom', {'domain': 'https://custom.example.com'})
+
+	assert provider.sign_in_path == '/api/user/checkin'
+
+
+def test_known_newapi_providers_are_builtin(monkeypatch):
+	monkeypatch.delenv('PROVIDERS', raising=False)
+	monkeypatch.delenv('ANYROUTER_ACCOUNTS', raising=False)
+
+	config = AppConfig.load_from_env()
+
+	assert config.providers['gorouter'].domain == 'https://gorouter.app'
+	assert config.providers['tabitoken'].domain == 'https://tabitoken.com'
+	assert config.providers['docode'].domain == 'https://docode.cc'
+	assert config.providers['jianzhile'].domain == 'https://jianzhile.vip'
+	assert config.providers['shawn'].domain == 'https://api.supxh.xin'
+	assert config.providers['api456'].domain == 'https://api456.me'
+	assert config.providers['jun'].domain == 'https://muyuan.do'
+	assert config.providers['jun'].login_path == '/auth/login'
+
+
+def test_account_with_domain_gets_direct_newapi_provider_name():
+	account = AccountConfig.from_dict(
+		{
+			'domain': 'https://example.com',
+			'email': 'a@example.com',
+			'password': 'secret',
+		},
+		0,
+	)
+
+	assert account.provider == 'newapi_1'
+	assert account.domain == 'https://example.com'
+
+
+def test_domain_account_creates_standard_newapi_provider(monkeypatch):
+	monkeypatch.delenv('PROVIDERS', raising=False)
+	monkeypatch.setenv(
+		'ANYROUTER_ACCOUNTS',
+		json.dumps(
+			[
+				{
+					'domain': 'https://example.com',
+					'email': 'a@example.com',
+					'password': 'secret',
+				}
+			]
+		),
+	)
+
+	config = AppConfig.load_from_env()
+
+	assert config.providers['newapi_1'].domain == 'https://example.com'
+	assert config.providers['newapi_1'].sign_in_path == '/api/user/checkin'
